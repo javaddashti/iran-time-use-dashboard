@@ -693,7 +693,7 @@ composition_fig.update_layout(
     xaxis=dict(range=[0, 1440], tickvals=[0, 240, 480, 720, 960, 1200, 1440], ticktext=["۰", "۴", "۸", "۱۲", "۱۶", "۲۰", "۲۴"], title="ساعت"),
     yaxis=dict(showticklabels=False, title=None),
     legend=dict(orientation="h", yanchor="top", y=-0.32, xanchor="center", x=0.5),
-    font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=14),
+    font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
 )
@@ -737,7 +737,7 @@ with left:
         xaxis_title="درصد" if metric_is_percent else "دقیقه در روز",
         yaxis_title=None,
         yaxis=dict(automargin=True),
-        font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=13),
+        font=dict(family="Vazirmatn, Tahoma, Arial", size=13),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
     )
@@ -777,7 +777,7 @@ with right:
             xaxis_title="دقیقه در روز؛ زنان منهای مردان",
             yaxis_title=None,
             yaxis=dict(automargin=True),
-            font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=13),
+            font=dict(family="Vazirmatn, Tahoma, Arial", size=13),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
         )
@@ -842,7 +842,7 @@ trend_fig.update_layout(
     margin=dict(l=20, r=20, t=15, b=80),
     xaxis=dict(title=None, tickangle=-35),
     yaxis=dict(title="متوسط دقیقه در روز", rangemode="tozero", gridcolor="#E5E7EB"),
-    font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=14),
+    font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
 )
