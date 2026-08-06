@@ -1,0 +1,20 @@
+# Python virtual environment
+.venv/
+
+# Python temporary files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Raw and confidential data
+data/raw/
+*.dta
+
+# Streamlit secrets
+.streamlit/secrets.toml
+
+# Editor and operating-system files
+.vscode/
+.DS_Store
+Thumbs.db
