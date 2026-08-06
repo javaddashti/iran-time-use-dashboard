@@ -66,9 +66,16 @@ def load_activity_data() -> pd.DataFrame:
             "فایل timeuse_person_activity پیدا نشد. ابتدا prepare_data.py را اجرا کنید."
         )
 
-    # تبدیل فشرده انواع داده؛ هیچ برچسب متنی روی ۱.۲ میلیون ردیف merge نمی‌شود.
+    # شناسه فرد در داده اصلی رشته‌ای است (برای نمونه شامل خط زیر و underscore).
+    # بنابراین نباید آن را با pd.to_numeric تبدیل کرد؛ این کار همه شناسه‌ها را NaN
+    # می‌کند. ابتدا شناسه‌های معتبر را نگه می‌داریم و بعد برای کاهش حافظه،
+    # هر شناسه یکتا را به یک کد عددی فشرده تبدیل می‌کنیم.
+    valid_pid = data["pid"].notna() & data["pid"].astype("string").str.len().gt(0)
+    data = data.loc[valid_pid]
+    data["pid"] = pd.factorize(data["pid"], sort=False)[0].astype("int32")
+
+    # سایر ستون‌ها واقعاً عددی‌اند و به صورت فشرده تبدیل می‌شوند.
     for column in [
-        "pid",
         "survey_year",
         "survey_quarter",
         "gender",
@@ -82,7 +89,6 @@ def load_activity_data() -> pd.DataFrame:
 
     data = data.dropna(
         subset=[
-            "pid",
             "survey_year",
             "survey_quarter",
             "gender",
@@ -94,7 +100,12 @@ def load_activity_data() -> pd.DataFrame:
     )
     data = data.loc[data["weight_person"].gt(0)]
 
-    data["pid"] = data["pid"].astype("int64")
+    if data.empty:
+        raise ValueError(
+            "پس از پاک‌سازی داده، هیچ مشاهده معتبری باقی نماند. "
+            "ساختار ستون‌های فایل پردازش‌شده را بررسی کنید."
+        )
+
     data["survey_year"] = data["survey_year"].astype("int16")
     data["survey_quarter"] = data["survey_quarter"].astype("int8")
     data["gender"] = data["gender"].astype("int8")
@@ -517,10 +528,14 @@ except (FileNotFoundError, KeyError) as exc:
     st.code("python prepare_data.py\npython -m streamlit run app.py")
     st.stop()
 
-all_years = sorted(int(value) for value in df["survey_year"].unique())
-all_quarters = sorted(int(value) for value in df["survey_quarter"].unique())
-min_age = int(df["age"].min())
-max_age = int(df["age"].max())
+all_years = sorted(int(value) for value in df["survey_year"].dropna().unique())
+all_quarters = sorted(int(value) for value in df["survey_quarter"].dropna().unique())
+age_values = df["age"].dropna()
+if age_values.empty:
+    st.error("ستون سن پس از پاک‌سازی فاقد مقدار معتبر است.")
+    st.stop()
+min_age = int(age_values.min())
+max_age = int(age_values.max())
 
 with st.sidebar.form("time_series_filters"):
     st.subheader("فیلترهای جامعه مورد بررسی")
