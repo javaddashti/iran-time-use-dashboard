@@ -15,28 +15,23 @@ DATA_FILE = Path("data/processed/timeuse_person_activity.parquet")
 FALLBACK_FILE = Path("data/processed/timeuse_person_activity.pkl.gz")
 LABEL_FILE = Path("data/processed/activity_labels.csv")
 
-GENDER_OPTIONS = {
-    "همه": None,
-    "مرد": 1,
-    "زن": 2,
-}
-EMPLOYMENT_OPTIONS = {
-    "همه": None,
-    "شاغل": 1,
-    "غیرشاغل": 0,
-}
-QUARTER_LABELS = {
-    1: "بهار",
-    2: "تابستان",
-    3: "پاییز",
-    4: "زمستان",
-}
-SURVEY_MONTH_LABELS = {
-    1: "خرداد",
-    2: "شهریور",
-    3: "آذر",
-    4: "اسفند",
-}
+# فقط ستون‌های لازم خوانده می‌شوند تا مصرف حافظه پایین بماند.
+DATA_COLUMNS = [
+    "pid",
+    "survey_year",
+    "survey_quarter",
+    "gender",
+    "age",
+    "activity_status",
+    "weight_person",
+    "activity_code",
+    "minutes",
+]
+
+GENDER_OPTIONS = {"همه": None, "مرد": 1, "زن": 2}
+EMPLOYMENT_OPTIONS = {"همه": None, "شاغل": 1, "غیرشاغل": 0}
+QUARTER_LABELS = {1: "بهار", 2: "تابستان", 3: "پاییز", 4: "زمستان"}
+SURVEY_MONTH_LABELS = {1: "خرداد", 2: "شهریور", 3: "آذر", 4: "اسفند"}
 METRIC_LABELS = {
     "mean_all": "متوسط زمان در کل جامعه",
     "mean_participants": "متوسط زمان در میان مشارکت‌کنندگان",
@@ -47,8 +42,7 @@ apply_fa_style()
 
 
 def to_persian_digits(value: object) -> str:
-    translation = str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹")
-    return str(value).translate(translation)
+    return str(value).translate(str.maketrans("0123456789", "۰۱۲۳۴۵۶۷۸۹"))
 
 
 def period_label(year: int, quarter: int) -> str:
@@ -56,78 +50,35 @@ def period_label(year: int, quarter: int) -> str:
     return f"{month} {to_persian_digits(year)}"
 
 
-@st.cache_data(show_spinner="در حال بارگذاری داده‌های سری زمانی...")
-def load_data() -> pd.DataFrame:
+@st.cache_resource(show_spinner="در حال بارگذاری داده‌های سری زمانی...")
+def load_activity_data() -> pd.DataFrame:
+    """Load a compact, numeric, read-only dataframe once for all reruns."""
     if DATA_FILE.exists():
-        data = pd.read_parquet(DATA_FILE)
+        data = pd.read_parquet(DATA_FILE, columns=DATA_COLUMNS)
     elif FALLBACK_FILE.exists():
         data = pd.read_pickle(FALLBACK_FILE, compression="gzip")
+        missing = [column for column in DATA_COLUMNS if column not in data.columns]
+        if missing:
+            raise KeyError(f"ستون‌های لازم در فایل داده وجود ندارند: {missing}")
+        data = data[DATA_COLUMNS]
     else:
         raise FileNotFoundError(
             "فایل timeuse_person_activity پیدا نشد. ابتدا prepare_data.py را اجرا کنید."
         )
 
-    numeric_columns = [
-        "activity_code",
+    # تبدیل فشرده انواع داده؛ هیچ برچسب متنی روی ۱.۲ میلیون ردیف merge نمی‌شود.
+    for column in [
+        "pid",
         "survey_year",
         "survey_quarter",
         "gender",
         "age",
         "activity_status",
         "weight_person",
+        "activity_code",
         "minutes",
-    ]
-    for column in numeric_columns:
-        if column in data.columns:
-            data[column] = pd.to_numeric(data[column], errors="coerce")
-
-    data["activity_code"] = data["activity_code"].astype("Int32")
-
-    if LABEL_FILE.exists():
-        labels = pd.read_csv(LABEL_FILE)
-        labels["activity_code"] = pd.to_numeric(
-            labels["activity_code"], errors="coerce"
-        ).astype("Int32")
-        keep_columns = [
-            column
-            for column in [
-                "activity_code",
-                "activity_label",
-                "activity_main_label",
-                "activity_display",
-            ]
-            if column in labels.columns
-        ]
-        data = data.merge(labels[keep_columns], on="activity_code", how="left")
-
-    fallback_label = data["activity_code"].map(
-        lambda value: f"فعالیت با کد {int(value)}" if pd.notna(value) else "نامشخص"
-    )
-    if "activity_label" not in data.columns:
-        data["activity_label"] = fallback_label
-    else:
-        data["activity_label"] = data["activity_label"].fillna(fallback_label)
-
-    if "activity_display" not in data.columns:
-        data["activity_display"] = (
-            data["activity_code"].astype("Int64").astype(str)
-            + " — "
-            + data["activity_label"]
-        )
-    else:
-        missing = data["activity_display"].isna()
-        data.loc[missing, "activity_display"] = (
-            data.loc[missing, "activity_code"].astype("Int64").astype(str)
-            + " — "
-            + data.loc[missing, "activity_label"]
-        )
-
-    if "activity_main_label" not in data.columns:
-        data["activity_main_label"] = "سایر/نامشخص"
-    else:
-        data["activity_main_label"] = data["activity_main_label"].fillna(
-            "سایر/نامشخص"
-        )
+    ]:
+        data[column] = pd.to_numeric(data[column], errors="coerce")
 
     data = data.dropna(
         subset=[
@@ -136,23 +87,104 @@ def load_data() -> pd.DataFrame:
             "survey_quarter",
             "gender",
             "age",
+            "weight_person",
             "activity_code",
             "minutes",
-            "weight_person",
         ]
-    ).copy()
-    data = data.loc[data["weight_person"].gt(0)].copy()
+    )
+    data = data.loc[data["weight_person"].gt(0)]
+
+    data["pid"] = data["pid"].astype("int64")
+    data["survey_year"] = data["survey_year"].astype("int16")
+    data["survey_quarter"] = data["survey_quarter"].astype("int8")
+    data["gender"] = data["gender"].astype("int8")
+    data["age"] = data["age"].astype("int16")
+    data["activity_status"] = data["activity_status"].astype("Int16")
+    data["activity_code"] = data["activity_code"].astype("int16")
+    data["minutes"] = data["minutes"].astype("int16")
+    data["weight_person"] = data["weight_person"].astype("float64")
+
     return data
+
+
+@st.cache_data(show_spinner=False)
+def load_activity_catalog() -> pd.DataFrame:
+    if not LABEL_FILE.exists():
+        return pd.DataFrame(
+            columns=["activity_code", "activity_label", "activity_main_label", "activity_display"]
+        )
+
+    labels = pd.read_csv(LABEL_FILE)
+    labels["activity_code"] = pd.to_numeric(
+        labels["activity_code"], errors="coerce"
+    ).astype("Int16")
+    labels = labels.dropna(subset=["activity_code"]).copy()
+    labels["activity_code"] = labels["activity_code"].astype("int16")
+
+    if "activity_label" not in labels.columns:
+        labels["activity_label"] = labels["activity_code"].map(
+            lambda code: f"فعالیت با کد {int(code)}"
+        )
+    else:
+        labels["activity_label"] = labels["activity_label"].fillna(
+            labels["activity_code"].map(lambda code: f"فعالیت با کد {int(code)}")
+        )
+
+    if "activity_main_label" not in labels.columns:
+        labels["activity_main_label"] = "سایر/نامشخص"
+    else:
+        labels["activity_main_label"] = labels["activity_main_label"].fillna(
+            "سایر/نامشخص"
+        )
+
+    if "activity_display" not in labels.columns:
+        labels["activity_display"] = (
+            labels["activity_code"].astype(str) + " — " + labels["activity_label"]
+        )
+    else:
+        missing = labels["activity_display"].isna()
+        labels.loc[missing, "activity_display"] = (
+            labels.loc[missing, "activity_code"].astype(str)
+            + " — "
+            + labels.loc[missing, "activity_label"]
+        )
+
+    return labels[
+        ["activity_code", "activity_label", "activity_main_label", "activity_display"]
+    ].drop_duplicates("activity_code")
+
+
+def build_catalog(data: pd.DataFrame, labels: pd.DataFrame) -> pd.DataFrame:
+    present = pd.DataFrame(
+        {"activity_code": np.sort(data["activity_code"].dropna().unique())}
+    )
+    catalog = present.merge(labels, on="activity_code", how="left")
+    fallback = catalog["activity_code"].map(
+        lambda code: f"فعالیت با کد {int(code)}"
+    )
+    catalog["activity_label"] = catalog["activity_label"].fillna(fallback)
+    catalog["activity_main_label"] = catalog["activity_main_label"].fillna(
+        "سایر/نامشخص"
+    )
+    catalog["activity_display"] = catalog["activity_display"].fillna(
+        catalog["activity_code"].astype(str) + " — " + catalog["activity_label"]
+    )
+    return catalog.sort_values("activity_code").reset_index(drop=True)
 
 
 def person_denominators(base: pd.DataFrame, use_weights: bool) -> pd.DataFrame:
     persons = base[
         ["pid", "survey_year", "survey_quarter", "weight_person"]
     ].drop_duplicates(["pid", "survey_year", "survey_quarter"])
-    persons["analysis_weight"] = persons["weight_person"] if use_weights else 1.0
-    persons["sample_person"] = 1
-
-    result = (
+    if use_weights:
+        analysis_weight = persons["weight_person"].to_numpy(dtype="float64")
+    else:
+        analysis_weight = np.ones(len(persons), dtype="float64")
+    persons = persons.assign(
+        analysis_weight=analysis_weight,
+        sample_person=np.ones(len(persons), dtype="int8"),
+    )
+    return (
         persons.groupby(["survey_year", "survey_quarter"], observed=True)
         .agg(
             population_weight=("analysis_weight", "sum"),
@@ -160,7 +192,6 @@ def person_denominators(base: pd.DataFrame, use_weights: bool) -> pd.DataFrame:
         )
         .reset_index()
     )
-    return result
 
 
 def add_period_columns(result: pd.DataFrame) -> pd.DataFrame:
@@ -182,12 +213,14 @@ def calculate_combined_series(
 ) -> pd.DataFrame:
     denominator = person_denominators(base, use_weights)
 
-    selected = base.loc[base["activity_code"].isin(selected_codes)].copy()
+    selected = base.loc[
+        base["activity_code"].isin(selected_codes),
+        ["pid", "survey_year", "survey_quarter", "weight_person", "minutes"],
+    ]
     person_minutes = (
         selected.groupby(
             ["pid", "survey_year", "survey_quarter", "weight_person"],
             observed=True,
-            dropna=False,
         )["minutes"]
         .sum()
         .reset_index()
@@ -202,9 +235,13 @@ def calculate_combined_series(
         how="left",
     )
     persons["minutes"] = persons["minutes"].fillna(0.0)
-    persons["participant"] = persons["minutes"].gt(0).astype(int)
-    persons["analysis_weight"] = persons["weight_person"] if use_weights else 1.0
-    persons["weighted_minutes"] = persons["analysis_weight"] * persons["minutes"]
+    persons["participant"] = persons["minutes"].gt(0).astype("int8")
+    persons["analysis_weight"] = (
+        persons["weight_person"] if use_weights else 1.0
+    )
+    persons["weighted_minutes"] = (
+        persons["analysis_weight"] * persons["minutes"]
+    )
     persons["participant_weight"] = (
         persons["analysis_weight"] * persons["participant"]
     )
@@ -245,22 +282,27 @@ def calculate_separate_series(
     base: pd.DataFrame,
     selected_codes: list[int],
     use_weights: bool,
+    code_info: pd.DataFrame,
 ) -> pd.DataFrame:
     denominator = person_denominators(base, use_weights)
-    selected = base.loc[base["activity_code"].isin(selected_codes)].copy()
+    selected = base.loc[
+        base["activity_code"].isin(selected_codes),
+        [
+            "pid",
+            "activity_code",
+            "survey_year",
+            "survey_quarter",
+            "weight_person",
+            "minutes",
+        ],
+    ].copy()
     selected["analysis_weight"] = selected["weight_person"] if use_weights else 1.0
     selected["weighted_minutes"] = selected["analysis_weight"] * selected["minutes"]
 
     numerators = (
         selected.groupby(
-            [
-                "activity_code",
-                "activity_display",
-                "survey_year",
-                "survey_quarter",
-            ],
+            ["activity_code", "survey_year", "survey_quarter"],
             observed=True,
-            dropna=False,
         )
         .agg(
             weighted_minutes=("weighted_minutes", "sum"),
@@ -270,18 +312,18 @@ def calculate_separate_series(
         .reset_index()
     )
 
-    code_info = (
-        base.loc[base["activity_code"].isin(selected_codes), ["activity_code", "activity_display"]]
-        .drop_duplicates("activity_code")
-        .sort_values("activity_code")
-    )
     periods = denominator[["survey_year", "survey_quarter"]].drop_duplicates()
-    grid = code_info.merge(periods, how="cross")
-    result = grid.merge(
-        numerators,
-        on=["activity_code", "activity_display", "survey_year", "survey_quarter"],
-        how="left",
-    ).merge(denominator, on=["survey_year", "survey_quarter"], how="left")
+    grid = code_info[["activity_code", "activity_display"]].merge(
+        periods, how="cross"
+    )
+    result = (
+        grid.merge(
+            numerators,
+            on=["activity_code", "survey_year", "survey_quarter"],
+            how="left",
+        )
+        .merge(denominator, on=["survey_year", "survey_quarter"], how="left")
+    )
 
     for column in ["weighted_minutes", "participant_weight", "participant_sample"]:
         result[column] = result[column].fillna(0.0)
@@ -383,11 +425,7 @@ def combined_chart(
         margin=dict(l=30, r=30, t=65 if chart_title else 30, b=90),
         font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=15),
         legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.22,
-            xanchor="center",
-            x=0.5,
+            orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5
         ),
         xaxis=dict(
             title=None,
@@ -418,7 +456,6 @@ def separate_chart(
     time_unit: str,
     chart_title: str,
 ) -> go.Figure:
-    y_column = metric
     y_title = (
         "نرخ مشارکت (درصد)"
         if metric == "participation_rate"
@@ -427,12 +464,12 @@ def separate_chart(
     figure = px.line(
         result,
         x="period_label",
-        y=y_column,
+        y=metric,
         color="activity_display",
         markers=True,
         labels={
             "period_label": "دوره",
-            y_column: y_title,
+            metric: y_title,
             "activity_display": "فعالیت",
         },
         title=chart_title or None,
@@ -459,11 +496,7 @@ def separate_chart(
         margin=dict(l=30, r=20, t=65 if chart_title else 30, b=90),
         font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=15),
         legend=dict(
-            orientation="h",
-            yanchor="top",
-            y=-0.25,
-            xanchor="center",
-            x=0.5,
+            orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5
         ),
         xaxis=dict(title=None, tickangle=-35, showgrid=False),
         yaxis=dict(title=y_title, rangemode="tozero", showgrid=False),
@@ -473,27 +506,26 @@ def separate_chart(
 
 st.title("روند زمانی فعالیت‌ها")
 st.caption(
-    "کد یا مجموعه‌ای از کدهای فعالیت را انتخاب کنید و تغییرات متوسط زمان و نرخ مشارکت را در ۱۲ دوره آمارگیری مشاهده کنید."
+    "کد یا مجموعه‌ای از کدهای فعالیت را انتخاب کنید و تغییرات متوسط زمان و نرخ مشارکت را در دوره‌های آمارگیری مشاهده کنید."
 )
 
 try:
-    df = load_data()
-except FileNotFoundError as exc:
+    df = load_activity_data()
+    labels = load_activity_catalog()
+except (FileNotFoundError, KeyError) as exc:
     st.error(str(exc))
     st.code("python prepare_data.py\npython -m streamlit run app.py")
     st.stop()
 
-all_years = sorted(int(value) for value in df["survey_year"].dropna().unique())
-all_quarters = sorted(int(value) for value in df["survey_quarter"].dropna().unique())
+all_years = sorted(int(value) for value in df["survey_year"].unique())
+all_quarters = sorted(int(value) for value in df["survey_quarter"].unique())
 min_age = int(df["age"].min())
 max_age = int(df["age"].max())
 
-with st.sidebar:
+with st.sidebar.form("time_series_filters"):
     st.subheader("فیلترهای جامعه مورد بررسی")
     selected_years = st.multiselect(
-        "سال آمارگیری",
-        options=all_years,
-        default=all_years,
+        "سال آمارگیری", options=all_years, default=all_years
     )
     selected_quarters = st.multiselect(
         "فصل آمارگیری",
@@ -512,44 +544,35 @@ with st.sidebar:
         value=(min_age, max_age),
     )
     weighting_label = st.radio(
-        "روش وزن‌دهی",
-        options=["وزن طرح", "بدون وزن"],
-        index=0,
+        "روش وزن‌دهی", options=["وزن طرح", "بدون وزن"], index=0
     )
     time_unit = st.radio(
-        "واحد زمان",
-        options=["ساعت", "دقیقه"],
-        index=0,
-        horizontal=True,
+        "واحد زمان", options=["ساعت", "دقیقه"], index=0, horizontal=True
     )
+    st.form_submit_button("اعمال فیلترها", width="stretch")
 
-base = df.loc[
+# همه شروط در یک ماسک ساخته می‌شوند تا فقط یک بار از داده اصلی کپی گرفته شود.
+mask = (
     df["survey_year"].isin(selected_years)
     & df["survey_quarter"].isin(selected_quarters)
     & df["age"].between(age_range[0], age_range[1])
-].copy()
-
+)
 selected_gender = GENDER_OPTIONS[gender_label]
 if selected_gender is not None:
-    base = base.loc[base["gender"].eq(selected_gender)].copy()
+    mask &= df["gender"].eq(selected_gender)
 
 selected_employment = EMPLOYMENT_OPTIONS[employment_label]
 if selected_employment == 1:
-    base = base.loc[base["activity_status"].isin([1, 2])].copy()
+    mask &= df["activity_status"].isin([1, 2])
 elif selected_employment == 0:
-    base = base.loc[
-        base["activity_status"].notna() & ~base["activity_status"].isin([1, 2])
-    ].copy()
+    mask &= df["activity_status"].notna() & ~df["activity_status"].isin([1, 2])
 
+base = df.loc[mask, DATA_COLUMNS]
 if base.empty:
     st.warning("برای فیلترهای انتخاب‌شده مشاهده‌ای وجود ندارد.")
     st.stop()
 
-activity_catalog = (
-    base[["activity_code", "activity_display", "activity_main_label"]]
-    .drop_duplicates("activity_code")
-    .sort_values("activity_code")
-)
+activity_catalog = build_catalog(base, labels)
 
 st.subheader("انتخاب فعالیت")
 main_groups = sorted(activity_catalog["activity_main_label"].dropna().unique())
@@ -558,10 +581,9 @@ selected_main_groups = st.multiselect(
     options=main_groups,
     default=main_groups,
 )
-
 code_catalog = activity_catalog.loc[
     activity_catalog["activity_main_label"].isin(selected_main_groups)
-].copy()
+]
 code_to_display = dict(
     zip(code_catalog["activity_code"].astype(int), code_catalog["activity_display"])
 )
@@ -576,7 +598,6 @@ selected_codes = st.multiselect(
     format_func=lambda code: code_to_display.get(code, str(code)),
     help="در حالت تجمیعی، زمان همه کدهای انتخاب‌شده برای هر فرد با هم جمع می‌شود.",
 )
-
 if not selected_codes:
     st.info("حداقل یک کد فعالیت انتخاب کنید.")
     st.stop()
@@ -595,10 +616,11 @@ selected_activity_table = activity_catalog.loc[
     activity_catalog["activity_code"].isin(selected_codes),
     ["activity_code", "activity_display", "activity_main_label"],
 ].sort_values("activity_code")
+
 with st.expander("مشاهده فهرست فعالیت‌های انتخاب‌شده", expanded=False):
     st.dataframe(
         selected_activity_table,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "activity_code": "کد فعالیت",
@@ -615,25 +637,22 @@ if selection_mode.startswith("تجمیع"):
 
     st.subheader("تنظیم نمودار")
     option_col1, option_col2, option_col3 = st.columns(3)
-    show_mean_all = option_col1.checkbox(
-        "متوسط زمان در کل جامعه", value=True
-    )
+    show_mean_all = option_col1.checkbox("متوسط زمان در کل جامعه", value=True)
     show_mean_participants = option_col2.checkbox(
         "متوسط زمان مشارکت‌کنندگان", value=True
     )
-    show_participation_rate = option_col3.checkbox(
-        "نرخ مشارکت", value=True
-    )
+    show_participation_rate = option_col3.checkbox("نرخ مشارکت", value=True)
+
     if not any([show_mean_all, show_mean_participants, show_participation_rate]):
         st.warning("حداقل یکی از شاخص‌های نمودار را انتخاب کنید.")
         st.stop()
 
-    if len(selected_codes) == 1:
-        default_title = code_to_display[selected_codes[0]]
-    else:
-        default_title = "روند زمانی مجموعه فعالیت‌های انتخاب‌شده"
+    default_title = (
+        code_to_display[selected_codes[0]]
+        if len(selected_codes) == 1
+        else "روند زمانی مجموعه فعالیت‌های انتخاب‌شده"
+    )
     chart_title = st.text_input("عنوان نمودار", value=default_title)
-
     figure = combined_chart(
         result,
         show_mean_all,
@@ -642,7 +661,7 @@ if selection_mode.startswith("تجمیع"):
         time_unit,
         chart_title,
     )
-    st.plotly_chart(figure, use_container_width=True)
+    st.plotly_chart(figure, width="stretch")
 
     table = result[
         [
@@ -659,7 +678,7 @@ if selection_mode.startswith("تجمیع"):
     st.subheader("جدول داده‌های نمودار")
     st.dataframe(
         table,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "period_label": "دوره آمارگیری",
@@ -682,7 +701,6 @@ if selection_mode.startswith("تجمیع"):
             ),
         },
     )
-
     export_table = table.copy()
     export_table.insert(0, "selected_activity_codes", ",".join(map(str, selected_codes)))
     file_name = "timeuse_activity_time_series_combined.csv"
@@ -694,7 +712,13 @@ else:
         )
         st.stop()
 
-    result = calculate_separate_series(base, selected_codes, use_weights)
+    selected_code_info = activity_catalog.loc[
+        activity_catalog["activity_code"].isin(selected_codes),
+        ["activity_code", "activity_display"],
+    ]
+    result = calculate_separate_series(
+        base, selected_codes, use_weights, selected_code_info
+    )
     result = convert_time_unit(result, time_unit)
 
     selected_metric = st.radio(
@@ -711,7 +735,7 @@ else:
         "عنوان نمودار", value="مقایسه روند زمانی فعالیت‌های انتخاب‌شده"
     )
     figure = separate_chart(result, selected_metric, time_unit, chart_title)
-    st.plotly_chart(figure, use_container_width=True)
+    st.plotly_chart(figure, width="stretch")
 
     table = result[
         [
@@ -728,7 +752,7 @@ else:
     st.subheader("جدول داده‌های نمودار")
     st.dataframe(
         table,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "activity_code": "کد فعالیت",
@@ -747,16 +771,13 @@ else:
             "participant_sample": "تعداد مشارکت‌کنندگان نمونه",
         },
     )
-    export_table = table
+    export_table = table.copy()
     file_name = "timeuse_activity_time_series_separate.csv"
 
 st.download_button(
-    "دانلود داده‌های نمودار (CSV)",
-    data=export_table.to_csv(index=False).encode("utf-8-sig"),
+    "دانلود داده‌های نمودار",
+    data=export_table.to_csv(index=False, encoding="utf-8-sig").encode("utf-8-sig"),
     file_name=file_name,
     mime="text/csv",
-)
-
-st.info(
-    "متوسط زمان در کل جامعه شامل افراد دارای زمان صفر است. متوسط زمان مشارکت‌کنندگان فقط در میان افرادی محاسبه می‌شود که حداقل ۱۵ دقیقه از فعالیت انتخاب‌شده را انجام داده‌اند."
+    width="stretch",
 )
