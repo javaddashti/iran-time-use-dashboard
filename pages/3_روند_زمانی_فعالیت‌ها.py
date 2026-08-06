@@ -9,7 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 from plotly.subplots import make_subplots
 
-from ui_style import apply_fa_style
+from ui_style import apply_fa_style, plotly_rtl
 
 DATA_FILE = Path("data/processed/timeuse_person_activity.parquet")
 FALLBACK_FILE = Path("data/processed/timeuse_person_activity.pkl.gz")
@@ -214,6 +214,7 @@ def add_period_columns(result: pd.DataFrame) -> pd.DataFrame:
         period_label(year, quarter)
         for year, quarter in zip(output["survey_year"], output["survey_quarter"])
     ]
+    output["period_label_plotly"] = output["period_label"].map(plotly_rtl)
     return output.sort_values("period_order").reset_index(drop=True)
 
 
@@ -352,6 +353,7 @@ def calculate_separate_series(
         result["weighted_minutes"] / result["participant_weight"],
         np.nan,
     )
+    result["activity_display_plotly"] = result["activity_display"].map(plotly_rtl)
     return add_period_columns(result)
 
 
@@ -376,9 +378,9 @@ def combined_chart(
     if show_mean_all:
         figure.add_trace(
             go.Bar(
-                x=result["period_label"],
+                x=result["period_label_plotly"],
                 y=result["mean_all"],
-                name=f"متوسط زمان در کل جامعه ({time_unit})",
+                name=plotly_rtl(f"متوسط زمان در کل جامعه ({time_unit})"),
                 marker_color="#3548F4",
                 customdata=np.column_stack(
                     [result["sample_size"], result["participant_sample"]]
@@ -396,9 +398,9 @@ def combined_chart(
     if show_mean_participants:
         figure.add_trace(
             go.Bar(
-                x=result["period_label"],
+                x=result["period_label_plotly"],
                 y=result["mean_participants"],
-                name=f"متوسط زمان مشارکت‌کنندگان ({time_unit})",
+                name=plotly_rtl(f"متوسط زمان مشارکت‌کنندگان ({time_unit})"),
                 marker_color="#2E9B32",
                 customdata=np.column_stack(
                     [result["sample_size"], result["participant_sample"]]
@@ -415,9 +417,9 @@ def combined_chart(
     if show_participation_rate:
         figure.add_trace(
             go.Scatter(
-                x=result["period_label"],
+                x=result["period_label_plotly"],
                 y=result["participation_rate"],
-                name="نرخ مشارکت (درصد)",
+                name=plotly_rtl("نرخ مشارکت (درصد)"),
                 mode="lines+markers",
                 line=dict(color="#E31A1C", width=3),
                 marker=dict(size=7),
@@ -427,33 +429,33 @@ def combined_chart(
         )
 
     figure.update_layout(
-        title=chart_title or None,
+        title=plotly_rtl(chart_title) if chart_title else None,
         barmode="group",
         height=620,
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=30, r=30, t=65 if chart_title else 30, b=90),
-        font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=15),
+        font=dict(family="Vazirmatn, Tahoma, Arial", size=15),
         legend=dict(
             orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5
         ),
         xaxis=dict(
             title=None,
             categoryorder="array",
-            categoryarray=result["period_label"].tolist(),
+            categoryarray=result["period_label_plotly"].tolist(),
             tickangle=-35,
             showgrid=False,
         ),
     )
     figure.update_yaxes(
-        title_text=f"متوسط زمان ({time_unit})",
+        title_text=plotly_rtl(f"متوسط زمان ({time_unit})"),
         rangemode="tozero",
         showgrid=False,
         secondary_y=False,
     )
     figure.update_yaxes(
-        title_text="نرخ مشارکت (درصد)",
+        title_text=plotly_rtl("نرخ مشارکت (درصد)"),
         rangemode="tozero",
         showgrid=False,
         secondary_y=True,
@@ -474,21 +476,21 @@ def separate_chart(
     )
     figure = px.line(
         result,
-        x="period_label",
+        x="period_label_plotly",
         y=metric,
-        color="activity_display",
+        color="activity_display_plotly",
         markers=True,
         labels={
-            "period_label": "دوره",
+            "period_label_plotly": plotly_rtl("دوره"),
             metric: y_title,
-            "activity_display": "فعالیت",
+            "activity_display_plotly": plotly_rtl("فعالیت"),
         },
-        title=chart_title or None,
+        title=plotly_rtl(chart_title) if chart_title else None,
         category_orders={
-            "period_label": (
-                result[["period_order", "period_label"]]
+            "period_label_plotly": (
+                result[["period_order", "period_label_plotly"]]
                 .drop_duplicates()
-                .sort_values("period_order")["period_label"]
+                .sort_values("period_order")["period_label_plotly"]
                 .tolist()
             )
         },
@@ -505,12 +507,12 @@ def separate_chart(
         plot_bgcolor="white",
         paper_bgcolor="white",
         margin=dict(l=30, r=20, t=65 if chart_title else 30, b=90),
-        font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=15),
+        font=dict(family="Vazirmatn, Tahoma, Arial", size=15),
         legend=dict(
             orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5
         ),
         xaxis=dict(title=None, tickangle=-35, showgrid=False),
-        yaxis=dict(title=y_title, rangemode="tozero", showgrid=False),
+        yaxis=dict(title=plotly_rtl(y_title), rangemode="tozero", showgrid=False),
     )
     return figure
 

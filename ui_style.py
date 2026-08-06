@@ -1,6 +1,24 @@
 from __future__ import annotations
 
+from html import escape
+
 import streamlit as st
+
+
+def plotly_rtl(text: object) -> str:
+    """Return HTML that forces correct RTL ordering inside Plotly SVG text.
+
+    Plotly renders chart text as SVG. Mixed Persian text and numbers can be
+    reordered by the Unicode bidirectional algorithm, especially when a label
+    starts with a multi-digit number. Plotly supports ``<span>`` in text
+    fields, so an isolated RTL span provides stable ordering without changing
+    the underlying data or downloadable tables.
+    """
+    safe_text = escape(str(text), quote=False)
+    return (
+        "<span style='direction:rtl;unicode-bidi:isolate'>"
+        f"{safe_text}</span>"
+    )
 
 
 def apply_fa_style() -> None:

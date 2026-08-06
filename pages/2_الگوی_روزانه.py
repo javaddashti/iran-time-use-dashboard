@@ -8,7 +8,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from ui_style import apply_fa_style
+from ui_style import apply_fa_style, plotly_rtl
 
 DATA_FILE = Path("data/processed/timeuse_diary_wide.parquet")
 FALLBACK_FILE = Path("data/processed/timeuse_diary_wide.pkl.gz")
@@ -172,7 +172,7 @@ def build_area_figure(
             go.Scatter(
                 x=profile["hour"],
                 y=profile[key],
-                name=label,
+                name=plotly_rtl(label),
                 mode="lines",
                 stackgroup="one",
                 groupnorm=None,
@@ -187,17 +187,17 @@ def build_area_figure(
 
     figure.update_layout(
         title=dict(
-            text=title,
+            text=plotly_rtl(title),
             x=0.5,
             xanchor="center",
-            font=dict(family="B Titr, BTitr, Titr, Tahoma", size=22),
+            font=dict(family="Lalezar, Vazirmatn, Tahoma, Arial", size=22),
         ),
         height=470,
         margin=dict(l=35, r=20, t=65, b=35),
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
-        font=dict(family="B Nazanin, BNazanin, Nazanin, Tahoma, Arial", size=14),
+        font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
         legend=dict(
             orientation="h",
             yanchor="top",
@@ -207,7 +207,7 @@ def build_area_figure(
             traceorder="normal",
         ),
         xaxis=dict(
-            title="ساعت شبانه‌روز",
+            title=plotly_rtl("ساعت شبانه‌روز"),
             range=[0, 24],
             tickmode="array",
             tickvals=list(range(0, 25, 3)),
@@ -215,7 +215,7 @@ def build_area_figure(
             zeroline=False,
         ),
         yaxis=dict(
-            title="سهم پاسخ‌گویان (درصد)",
+            title=plotly_rtl("سهم پاسخ‌گویان (درصد)"),
             range=[0, 100],
             tickmode="array",
             tickvals=[0, 20, 40, 60, 80, 100],

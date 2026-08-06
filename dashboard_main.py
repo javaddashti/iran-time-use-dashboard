@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
-from ui_style import apply_fa_style
+from ui_style import apply_fa_style, plotly_rtl
 
 DATA_FILE = Path("data/processed/timeuse_person_activity.parquet")
 FALLBACK_FILE = Path("data/processed/timeuse_person_activity.pkl.gz")
@@ -670,12 +670,12 @@ for row in composition.itertuples(index=False):
     text = format_duration(row.mean_minutes) if row.mean_minutes >= 35 else ""
     composition_fig.add_trace(
         go.Bar(
-            y=["شبانه‌روز"],
+            y=[plotly_rtl("شبانه‌روز")],
             x=[row.mean_minutes],
-            name=row.category_label,
+            name=plotly_rtl(row.category_label),
             orientation="h",
             marker_color=row.color,
-            text=[text],
+            text=[plotly_rtl(text)] if text else [""],
             textposition="inside",
             insidetextanchor="middle",
             customdata=[[row.category_label, row.share_day, format_duration(row.mean_minutes)]],
@@ -690,7 +690,7 @@ composition_fig.update_layout(
     barmode="stack",
     height=230,
     margin=dict(l=10, r=10, t=10, b=70),
-    xaxis=dict(range=[0, 1440], tickvals=[0, 240, 480, 720, 960, 1200, 1440], ticktext=["۰", "۴", "۸", "۱۲", "۱۶", "۲۰", "۲۴"], title="ساعت"),
+    xaxis=dict(range=[0, 1440], tickvals=[0, 240, 480, 720, 960, 1200, 1440], ticktext=["۰", "۴", "۸", "۱۲", "۱۶", "۲۰", "۲۴"], title=plotly_rtl("ساعت")),
     yaxis=dict(showticklabels=False, title=None),
     legend=dict(orientation="h", yanchor="top", y=-0.32, xanchor="center", x=0.5),
     font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
@@ -712,7 +712,7 @@ with left:
     bar_fig = go.Figure(
         go.Bar(
             x=values,
-            y=plot_data["activity_display"],
+            y=plot_data["activity_display"].map(plotly_rtl),
             orientation="h",
             marker_color="#3A8FBD",
             customdata=np.column_stack(
@@ -734,7 +734,7 @@ with left:
     bar_fig.update_layout(
         height=max(420, 37 * top_n),
         margin=dict(l=15, r=15, t=10, b=35),
-        xaxis_title="درصد" if metric_is_percent else "دقیقه در روز",
+        xaxis_title=plotly_rtl("درصد" if metric_is_percent else "دقیقه در روز"),
         yaxis_title=None,
         yaxis=dict(automargin=True),
         font=dict(family="Vazirmatn, Tahoma, Arial", size=13),
@@ -756,7 +756,7 @@ with right:
         gap_fig = go.Figure(
             go.Bar(
                 x=gap_data["gap"],
-                y=gap_data["activity_display"],
+                y=gap_data["activity_display"].map(plotly_rtl),
                 orientation="h",
                 marker_color=colors,
                 customdata=np.column_stack(
@@ -774,7 +774,7 @@ with right:
         gap_fig.update_layout(
             height=max(420, 37 * top_n),
             margin=dict(l=15, r=15, t=10, b=35),
-            xaxis_title="دقیقه در روز؛ زنان منهای مردان",
+            xaxis_title=plotly_rtl("دقیقه در روز؛ زنان منهای مردان"),
             yaxis_title=None,
             yaxis=dict(automargin=True),
             font=dict(family="Vazirmatn, Tahoma, Arial", size=13),
@@ -822,7 +822,7 @@ trend_label, trend_codes, trend_color = CATEGORY_BY_KEY[trend_key]
 trend = calculate_trend(filtered, trend_codes, weighted)
 trend_fig = go.Figure(
     go.Scatter(
-        x=trend["period_label"],
+        x=trend["period_label"].map(plotly_rtl),
         y=trend["mean_minutes"],
         mode="lines+markers",
         line=dict(color=trend_color, width=3),
@@ -841,7 +841,7 @@ trend_fig.update_layout(
     height=360,
     margin=dict(l=20, r=20, t=15, b=80),
     xaxis=dict(title=None, tickangle=-35),
-    yaxis=dict(title="متوسط دقیقه در روز", rangemode="tozero", gridcolor="#E5E7EB"),
+    yaxis=dict(title=plotly_rtl("متوسط دقیقه در روز"), rangemode="tozero", gridcolor="#E5E7EB"),
     font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
