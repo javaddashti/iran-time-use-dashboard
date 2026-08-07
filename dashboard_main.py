@@ -169,6 +169,32 @@ def format_duration(minutes: float) -> str:
     return f"{to_fa_digits(remaining)} دقیقه"
 
 
+def wrap_plotly_label(text: object, width: int = 30, max_lines: int = 3) -> str:
+    """Wrap long Persian category labels so they stay outside the bars."""
+    raw = str(text).strip()
+    if not raw:
+        return ""
+    words = raw.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = word if not current else f"{current} {word}"
+        if len(candidate) <= width:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+            if len(lines) >= max_lines - 1:
+                break
+    if current and len(lines) < max_lines:
+        lines.append(current)
+    consumed = " ".join(lines)
+    if len(consumed) < len(raw) and lines:
+        lines[-1] = lines[-1].rstrip("…") + "…"
+    return plotly_rtl("<br>".join(lines))
+
+
 def hex_to_rgba(hex_color: str, alpha: float = 0.14) -> str:
     """Convert a six-digit hex color to Plotly-compatible rgba()."""
     value = str(hex_color).strip().lstrip("#")
@@ -688,11 +714,27 @@ for row in composition.itertuples(index=False):
     )
 composition_fig.update_layout(
     barmode="stack",
-    height=230,
-    margin=dict(l=10, r=10, t=10, b=70),
-    xaxis=dict(range=[0, 1440], tickvals=[0, 240, 480, 720, 960, 1200, 1440], ticktext=["۰", "۴", "۸", "۱۲", "۱۶", "۲۰", "۲۴"], title=plotly_rtl("ساعت")),
+    height=285,
+    margin=dict(l=20, r=220, t=10, b=55),
+    xaxis=dict(
+        range=[0, 1440],
+        tickvals=[0, 240, 480, 720, 960, 1200, 1440],
+        ticktext=["۰", "۴", "۸", "۱۲", "۱۶", "۲۰", "۲۴"],
+        title=plotly_rtl("ساعت"),
+        title_standoff=10,
+        automargin=True,
+    ),
     yaxis=dict(showticklabels=False, title=None),
-    legend=dict(orientation="h", yanchor="top", y=-0.32, xanchor="center", x=0.5),
+    legend=dict(
+        orientation="v",
+        yanchor="top",
+        y=1.0,
+        xanchor="left",
+        x=1.02,
+        font=dict(size=12),
+        itemsizing="constant",
+        bgcolor="rgba(255,255,255,0.72)",
+    ),
     font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
@@ -712,7 +754,7 @@ with left:
     bar_fig = go.Figure(
         go.Bar(
             x=values,
-            y=plot_data["activity_display"].map(plotly_rtl),
+            y=plot_data["activity_display"].map(lambda value: wrap_plotly_label(value, 28, 3)),
             orientation="h",
             marker_color="#3A8FBD",
             customdata=np.column_stack(
@@ -732,14 +774,25 @@ with left:
         )
     )
     bar_fig.update_layout(
-        height=max(420, 37 * top_n),
-        margin=dict(l=15, r=15, t=10, b=35),
-        xaxis_title=plotly_rtl("درصد" if metric_is_percent else "دقیقه در روز"),
-        yaxis_title=None,
-        yaxis=dict(automargin=True),
+        height=max(500, 55 * top_n),
+        margin=dict(l=20, r=235, t=10, b=60),
+        xaxis=dict(
+            title=plotly_rtl("درصد" if metric_is_percent else "دقیقه در روز"),
+            title_standoff=12,
+            automargin=True,
+            showgrid=False,
+        ),
+        yaxis=dict(
+            title=None,
+            side="right",
+            ticklabelposition="outside",
+            automargin=True,
+            tickfont=dict(size=11),
+        ),
         font=dict(family="Vazirmatn, Tahoma, Arial", size=13),
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
     )
     st.plotly_chart(bar_fig, width="stretch", config={"displayModeBar": False})
 
@@ -756,7 +809,7 @@ with right:
         gap_fig = go.Figure(
             go.Bar(
                 x=gap_data["gap"],
-                y=gap_data["activity_display"].map(plotly_rtl),
+                y=gap_data["activity_display"].map(lambda value: wrap_plotly_label(value, 28, 3)),
                 orientation="h",
                 marker_color=colors,
                 customdata=np.column_stack(
@@ -772,14 +825,26 @@ with right:
         )
         gap_fig.add_vline(x=0, line_width=1, line_color="#6B7280")
         gap_fig.update_layout(
-            height=max(420, 37 * top_n),
-            margin=dict(l=15, r=15, t=10, b=35),
-            xaxis_title=plotly_rtl("دقیقه در روز؛ زنان منهای مردان"),
-            yaxis_title=None,
-            yaxis=dict(automargin=True),
+            height=max(500, 55 * top_n),
+            margin=dict(l=235, r=20, t=10, b=60),
+            xaxis=dict(
+                title=plotly_rtl("دقیقه در روز؛ زنان منهای مردان"),
+                title_standoff=12,
+                automargin=True,
+                zeroline=False,
+                showgrid=False,
+            ),
+            yaxis=dict(
+                title=None,
+                side="left",
+                ticklabelposition="outside",
+                automargin=True,
+                tickfont=dict(size=11),
+            ),
             font=dict(family="Vazirmatn, Tahoma, Arial", size=13),
             plot_bgcolor="rgba(0,0,0,0)",
             paper_bgcolor="rgba(0,0,0,0)",
+            showlegend=False,
         )
         st.plotly_chart(gap_fig, width="stretch", config={"displayModeBar": False})
 
@@ -838,10 +903,22 @@ trend_fig = go.Figure(
     )
 )
 trend_fig.update_layout(
-    height=360,
-    margin=dict(l=20, r=20, t=15, b=80),
-    xaxis=dict(title=None, tickangle=-35),
-    yaxis=dict(title=plotly_rtl("متوسط دقیقه در روز"), rangemode="tozero", gridcolor="#E5E7EB"),
+    height=390,
+    margin=dict(l=85, r=35, t=15, b=105),
+    xaxis=dict(
+        title=None,
+        tickangle=-40,
+        automargin=True,
+        tickfont=dict(size=11),
+        showgrid=False,
+    ),
+    yaxis=dict(
+        title=plotly_rtl("متوسط دقیقه در روز"),
+        title_standoff=16,
+        rangemode="tozero",
+        gridcolor="#E5E7EB",
+        automargin=True,
+    ),
     font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",

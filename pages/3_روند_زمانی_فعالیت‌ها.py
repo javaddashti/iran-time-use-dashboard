@@ -431,33 +431,48 @@ def combined_chart(
     figure.update_layout(
         title=plotly_rtl(chart_title) if chart_title else None,
         barmode="group",
-        height=620,
+        height=690,
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
-        margin=dict(l=30, r=30, t=65 if chart_title else 30, b=90),
-        font=dict(family="Vazirmatn, Tahoma, Arial", size=15),
+        margin=dict(l=90, r=115, t=135 if chart_title else 105, b=115),
+        font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
         legend=dict(
-            orientation="h", yanchor="top", y=-0.22, xanchor="center", x=0.5
+            orientation="h",
+            yanchor="bottom",
+            y=1.03,
+            xanchor="center",
+            x=0.5,
+            font=dict(size=12),
+            itemsizing="constant",
+            bgcolor="rgba(255,255,255,0.90)",
         ),
         xaxis=dict(
             title=None,
             categoryorder="array",
             categoryarray=result["period_label_plotly"].tolist(),
-            tickangle=-35,
+            tickangle=-40,
+            tickfont=dict(size=11),
             showgrid=False,
+            automargin=True,
         ),
     )
     figure.update_yaxes(
         title_text=plotly_rtl(f"متوسط زمان ({time_unit})"),
+        title_standoff=18,
         rangemode="tozero",
         showgrid=False,
+        ticklabelposition="outside",
+        automargin=True,
         secondary_y=False,
     )
     figure.update_yaxes(
         title_text=plotly_rtl("نرخ مشارکت (درصد)"),
+        title_standoff=18,
         rangemode="tozero",
         showgrid=False,
+        ticklabelposition="outside",
+        automargin=True,
         secondary_y=True,
     )
     return figure
@@ -502,17 +517,37 @@ def separate_chart(
     )
     figure.update_traces(line=dict(width=2.5), marker=dict(size=7))
     figure.update_layout(
-        height=620,
+        height=690,
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
-        margin=dict(l=30, r=20, t=65 if chart_title else 30, b=90),
-        font=dict(family="Vazirmatn, Tahoma, Arial", size=15),
+        margin=dict(l=90, r=320, t=75 if chart_title else 40, b=115),
+        font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
         legend=dict(
-            orientation="h", yanchor="top", y=-0.25, xanchor="center", x=0.5
+            orientation="v",
+            yanchor="top",
+            y=1.0,
+            xanchor="left",
+            x=1.02,
+            font=dict(size=11),
+            itemsizing="constant",
+            bgcolor="rgba(255,255,255,0.90)",
         ),
-        xaxis=dict(title=None, tickangle=-35, showgrid=False),
-        yaxis=dict(title=plotly_rtl(y_title), rangemode="tozero", showgrid=False),
+        xaxis=dict(
+            title=None,
+            tickangle=-40,
+            tickfont=dict(size=11),
+            showgrid=False,
+            automargin=True,
+        ),
+        yaxis=dict(
+            title=plotly_rtl(y_title),
+            title_standoff=18,
+            rangemode="tozero",
+            showgrid=False,
+            ticklabelposition="outside",
+            automargin=True,
+        ),
     )
     return figure
 

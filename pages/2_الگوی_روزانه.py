@@ -192,35 +192,43 @@ def build_area_figure(
             xanchor="center",
             font=dict(family="Lalezar, Vazirmatn, Tahoma, Arial", size=22),
         ),
-        height=470,
-        margin=dict(l=35, r=20, t=65, b=35),
+        height=500,
+        margin=dict(l=85, r=225, t=75, b=70),
         hovermode="x unified",
         plot_bgcolor="white",
         paper_bgcolor="white",
         font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
         legend=dict(
-            orientation="h",
+            orientation="v",
             yanchor="top",
-            y=-0.18,
-            xanchor="center",
-            x=0.5,
+            y=1.0,
+            xanchor="left",
+            x=1.02,
             traceorder="normal",
+            font=dict(size=12),
+            itemsizing="constant",
+            bgcolor="rgba(255,255,255,0.88)",
         ),
         xaxis=dict(
             title=plotly_rtl("ساعت شبانه‌روز"),
+            title_standoff=12,
             range=[0, 24],
             tickmode="array",
             tickvals=list(range(0, 25, 3)),
             showgrid=False,
             zeroline=False,
+            automargin=True,
         ),
         yaxis=dict(
             title=plotly_rtl("سهم پاسخ‌گویان (درصد)"),
+            title_standoff=16,
             range=[0, 100],
             tickmode="array",
             tickvals=[0, 20, 40, 60, 80, 100],
             showgrid=False,
             zeroline=False,
+            ticklabelposition="outside",
+            automargin=True,
         ),
     )
     return figure
@@ -427,7 +435,7 @@ for index, group in enumerate(groups):
             category_system=category_system,
             show_legend=True,
         )
-        st.plotly_chart(figure, use_container_width=True)
+        st.plotly_chart(figure, width="stretch")
 
         csv_bytes = profile.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
