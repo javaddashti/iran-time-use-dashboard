@@ -162,76 +162,154 @@ def build_area_figure(
     profile: pd.DataFrame,
     title: str,
     category_system: str,
-    show_legend: bool,
 ) -> go.Figure:
-    specs = CATEGORY_SPECS_8 if category_system == "۸ گروه" else CATEGORY_SPECS_6
+
+    specs = (
+        CATEGORY_SPECS_8
+        if category_system == "۸ گروه"
+        else CATEGORY_SPECS_6
+    )
 
     figure = go.Figure()
+
     for key, label, color in specs:
         figure.add_trace(
             go.Scatter(
                 x=profile["hour"],
                 y=profile[key],
-                name=plotly_rtl(label),
+                name=label,
                 mode="lines",
                 stackgroup="one",
                 groupnorm=None,
-                line=dict(color="white", width=1.2),
+                line=dict(
+                    color="white",
+                    width=1.2,
+                ),
                 fillcolor=color,
                 hovertemplate=(
-                    f"{label}<br>ساعت: %{{x:.2f}}<br>سهم: %{{y:.1f}}٪<extra></extra>"
+                    f"{label}"
+                    "<br>ساعت: %{x:.2f}"
+                    "<br>سهم: %{y:.1f}٪"
+                    "<extra></extra>"
                 ),
-                showlegend=show_legend,
+
+                # مهم:
+                # legend داخل هر نمودار نمایش داده نشود
+                showlegend=False,
             )
         )
 
     figure.update_layout(
         title=dict(
-            text=plotly_rtl(title),
+            text=title,
             x=0.5,
             xanchor="center",
-            font=dict(family="Lalezar, Vazirmatn, Tahoma, Arial", size=22),
+            font=dict(
+                family="Vazirmatn, Tahoma, Arial",
+                size=22,
+            ),
         ),
+
+        # کمی بلندتر برای خوانایی بهتر
         height=500,
-        margin=dict(l=85, r=225, t=75, b=70),
+
+        # چون legend نداریم دیگر حاشیه راست لازم نیست
+        margin=dict(
+            l=65,
+            r=25,
+            t=70,
+            b=65,
+        ),
+
         hovermode="x unified",
+
         plot_bgcolor="white",
         paper_bgcolor="white",
-        font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
-        legend=dict(
-            orientation="v",
-            yanchor="top",
-            y=1.0,
-            xanchor="left",
-            x=1.02,
-            traceorder="normal",
-            font=dict(size=12),
-            itemsizing="constant",
-            bgcolor="rgba(255,255,255,0.88)",
+
+        font=dict(
+            family="Vazirmatn, Tahoma, Arial",
+            size=13,
         ),
+
         xaxis=dict(
-            title=plotly_rtl("ساعت شبانه‌روز"),
-            title_standoff=12,
+            title=dict(
+                text="ساعت شبانه‌روز",
+                standoff=12,
+            ),
             range=[0, 24],
             tickmode="array",
-            tickvals=list(range(0, 25, 3)),
+
+            # برای نمودار نیم‌صفحه‌ای بهتر از فاصله 3 ساعته است
+            tickvals=[0, 4, 8, 12, 16, 20, 24],
+
+            ticktext=[
+                "۰",
+                "۴",
+                "۸",
+                "۱۲",
+                "۱۶",
+                "۲۰",
+                "۲۴",
+            ],
+
             showgrid=False,
             zeroline=False,
             automargin=True,
         ),
+
         yaxis=dict(
-            title=plotly_rtl("سهم پاسخ‌گویان (درصد)"),
-            title_standoff=16,
+            title=dict(
+                text="سهم پاسخ‌گویان (درصد)",
+                standoff=12,
+            ),
             range=[0, 100],
             tickmode="array",
             tickvals=[0, 20, 40, 60, 80, 100],
             showgrid=False,
             zeroline=False,
-            ticklabelposition="outside",
             automargin=True,
         ),
     )
+
     return figure
+
+
+def show_shared_legend(category_system: str) -> None:
+    """Render one shared RTL legend above all daily-profile charts.
+
+    ``st.html`` is used deliberately here. With ``st.markdown`` the indented
+    multiline HTML string can be interpreted as a Markdown code block, which
+    is why the raw ``<div>``/``<span>`` tags were visible on the page.
+    """
+    specs = (
+        CATEGORY_SPECS_8
+        if category_system == "۸ گروه"
+        else CATEGORY_SPECS_6
+    )
+
+    legend_items = "".join(
+        (
+            '<div style="display:flex;align-items:center;gap:7px;'
+            'white-space:nowrap;direction:rtl;">'
+            f'<span style="width:14px;height:14px;background:{color};'
+            'display:inline-block;border-radius:3px;flex:0 0 14px;"></span>'
+            f'<span>{label}</span>'
+            '</div>'
+        )
+        for _, label, color in specs
+    )
+
+    legend_html = (
+        '<div dir="rtl" style="display:flex;justify-content:center;'
+        'align-items:center;flex-wrap:wrap;gap:12px 24px;'
+        'padding:10px 14px;margin:0 0 18px 0;'
+        'font-family:Vazirmatn,Tahoma,Arial;font-size:15px;'
+        'line-height:1.8;">'
+        + legend_items
+        + '</div>'
+    )
+
+    st.html(legend_html)
 
 
 def automatic_title(group: GroupDefinition) -> str:
@@ -385,7 +463,7 @@ with st.form("group_builder"):
 
     submitted = st.form_submit_button(
         "رسم نمودارها",
-        use_container_width=True,
+        width="stretch",
         type="primary",
     )
 
@@ -394,7 +472,14 @@ if not submitted:
     st.stop()
 
 profiles: list[pd.DataFrame] = []
-chart_columns = st.columns(2)
+
+st.markdown("### راهنمای رنگ فعالیت‌ها")
+show_shared_legend(category_system)
+
+chart_columns = st.columns(
+    2,
+    gap="large",
+)
 
 for index, group in enumerate(groups):
     mask = make_group_mask(base, group)
@@ -433,9 +518,15 @@ for index, group in enumerate(groups):
             profile,
             title=title,
             category_system=category_system,
-            show_legend=True,
         )
-        st.plotly_chart(figure, width="stretch")
+        st.plotly_chart(
+            figure,
+            width="stretch",
+            config={
+                "displayModeBar": True,
+                "responsive": True,
+            },
+        )
 
         csv_bytes = profile.to_csv(index=False).encode("utf-8-sig")
         st.download_button(
@@ -444,7 +535,7 @@ for index, group in enumerate(groups):
             file_name=f"daily_profile_group_{index + 1}.csv",
             mime="text/csv",
             key=f"download_group_{index}",
-            use_container_width=True,
+            width="stretch",
         )
 
 if profiles:
@@ -455,7 +546,7 @@ if profiles:
         data=combined.to_csv(index=False).encode("utf-8-sig"),
         file_name="daily_profiles_selected_groups.csv",
         mime="text/csv",
-        use_container_width=True,
+        width="stretch",
     )
 
 st.info(
