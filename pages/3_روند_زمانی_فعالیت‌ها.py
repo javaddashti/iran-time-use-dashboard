@@ -720,11 +720,6 @@ if selection_mode.startswith("تجمیع"):
             "period_label",
             "mean_all",
             "mean_participants",
-            "participation_rate",
-            "sample_size",
-            "participant_sample",
-            "population_weight",
-            "participant_weight",
         ]
     ].copy()
     st.subheader("جدول داده‌های نمودار")
@@ -739,17 +734,6 @@ if selection_mode.startswith("تجمیع"):
             ),
             "mean_participants": st.column_config.NumberColumn(
                 f"متوسط زمان مشارکت‌کنندگان ({time_unit})", format="%.3f"
-            ),
-            "participation_rate": st.column_config.NumberColumn(
-                "نرخ مشارکت (درصد)", format="%.3f"
-            ),
-            "sample_size": "تعداد افراد نمونه",
-            "participant_sample": "تعداد مشارکت‌کنندگان نمونه",
-            "population_weight": st.column_config.NumberColumn(
-                "جمع وزن جامعه", format="%.0f"
-            ),
-            "participant_weight": st.column_config.NumberColumn(
-                "جمع وزن مشارکت‌کنندگان", format="%.0f"
             ),
         },
     )
