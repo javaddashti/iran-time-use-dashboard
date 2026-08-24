@@ -49,6 +49,21 @@ def apply_fa_style() -> None:
         [data-testid="stSidebar"] {
             background: #F1F3F7;
             border-left: 1px solid #E2E6ED;
+
+            width: 380px !important;
+            min-width: 380px !important;
+            max-width: 380px !important;
+        }
+
+        /* محتوای داخلی سایدبار هم دقیقاً همان عرض را بگیرد */
+        [data-testid="stSidebar"] > div:first-child {
+            width: 380px !important;
+            min-width: 380px !important;
+        }
+
+        /* برای نسخه‌های جدیدتر Streamlit */
+        [data-testid="stSidebarContent"] {
+            width: 380px !important;
         }
 
         h1, h2, h3, h4, h5, h6,
