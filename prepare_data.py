@@ -13,6 +13,7 @@ ID_COLUMNS = [
     "wave",
     "survey_year",
     "survey_quarter",
+    "ostan",
     "gender",
     "age",
     "education_level",
@@ -25,10 +26,28 @@ ID_COLUMNS = [
 ACTIVITY_COLUMNS = [f"Q2Code{i}" for i in range(1, 97)]
 
 
+def clean_ostan(series: pd.Series) -> pd.Series:
+    """
+    Keep genuine province codes and preserve missing province values as missing.
+
+    IMPORTANT:
+    Province code "00" is a real code (Markazi). Therefore an empty string must
+    never be padded with zfill(2), because "" -> "00" would incorrectly assign
+    every observation with missing geography to Markazi.
+    """
+    out = series.astype("string").str.strip()
+    out = out.str.replace(r"\.0$", "", regex=True)
+    out = out.mask(out.isna() | out.eq("") | out.isin([".", "nan", "None", "<NA>"]))
+    out = out.str.zfill(2)
+    return out
+
+
 def prepare_chunk(chunk: pd.DataFrame) -> pd.DataFrame:
     chunk = chunk.loc[chunk["complete_primary_diary"].eq(1)].copy()
     if chunk.empty:
         return pd.DataFrame()
+
+    chunk["ostan"] = clean_ostan(chunk["ostan"])
 
     long = chunk.melt(
         id_vars=ID_COLUMNS,
@@ -91,6 +110,21 @@ def main() -> None:
         raise RuntimeError("No complete diary observations were found.")
 
     output = pd.concat(parts, ignore_index=True)
+
+    # QA: report how many genuine province codes are available by survey year.
+    province_qa = (
+        output.loc[output["ostan"].notna(), ["survey_year", "ostan"]]
+        .drop_duplicates()
+        .groupby("survey_year", observed=True)["ostan"]
+        .nunique()
+    )
+    print("\nDistinct non-missing province codes by survey year:")
+    if province_qa.empty:
+        print("  No valid province codes were found.")
+    else:
+        for year, nprov in province_qa.items():
+            print(f"  {int(year)}: {int(nprov)} province codes")
+
     try:
         output.to_parquet(OUTPUT_FILE, index=False, compression="snappy")
         saved_file = OUTPUT_FILE
