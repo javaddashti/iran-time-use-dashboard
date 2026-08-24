@@ -57,13 +57,13 @@ def apply_fa_style() -> None:
 
         /* محتوای داخلی سایدبار هم دقیقاً همان عرض را بگیرد */
         [data-testid="stSidebar"] > div:first-child {
-            width: 380px !important;
+            width: 420px !important;
             min-width: 380px !important;
         }
 
         /* برای نسخه‌های جدیدتر Streamlit */
         [data-testid="stSidebarContent"] {
-            width: 380px !important;
+            width: 420px !important;
         }
 
         h1, h2, h3, h4, h5, h6,
