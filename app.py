@@ -5,7 +5,7 @@ import streamlit as st
 from ui_style import apply_fa_style
 
 st.set_page_config(
-    page_title="داشبورد گذران وقت ایران",
+    page_title="داشبورد زندگی روزانه",
     page_icon="⏱️",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -29,9 +29,14 @@ time_series_page = st.Page(
     title="روند زمانی فعالیت‌ها",
     icon="📈",
 )
+geo_page = st.Page(
+    "pages/4_توزیع_جغرافیایی.py",
+    title="توزیع جغرافیایی",
+    icon="🗺️",
+)
 
 navigation = st.navigation(
-    [overview_page, daily_page, time_series_page],
+    [overview_page, daily_page, time_series_page, geo_page],
     position="sidebar",
 )
 navigation.run()
