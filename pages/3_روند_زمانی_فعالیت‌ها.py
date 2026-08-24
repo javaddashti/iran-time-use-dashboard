@@ -735,6 +735,9 @@ if selection_mode.startswith("تجمیع"):
             "mean_participants": st.column_config.NumberColumn(
                 f"متوسط زمان مشارکت‌کنندگان ({time_unit})", format="%.3f"
             ),
+            "participation_rate": st.column_config.NumberColumn(
+                f"درصد مشارکت ({time_unit})", format="%.3f"
+            ),
         },
     )
     export_table = table.copy()
