@@ -496,6 +496,15 @@ except (FileNotFoundError, ValueError) as exc:
     st.stop()
 
 all_waves = sorted(int(value) for value in df["wave"].dropna().unique())
+
+# Survey wave codes are not chronological numeric identifiers: 304 is newer than 9899.
+# Apply the newest-wave default once per browser session, without overriding later
+# manual choices by the visitor. Existing open sessions are migrated once, too.
+default_overview_waves = [304] if 304 in all_waves else [max(all_waves)]
+if not st.session_state.get("_overview_wave_304_default_applied", False):
+    st.session_state["overview_waves"] = default_overview_waves.copy()
+    st.session_state["_overview_wave_304_default_applied"] = True
+
 all_genders = sorted(int(value) for value in df["gender"].dropna().unique())
 min_age = int(df["age"].min())
 max_age = int(df["age"].max())
@@ -530,7 +539,7 @@ with st.sidebar.form("overview_filters"):
     selected_waves = st.multiselect(
         "موج آمارگیری",
         options=all_waves,
-        default=[max(all_waves)],
+        default=default_overview_waves,
         format_func=lambda value: WAVE_LABELS.get(value, to_fa_digits(value)),
         key="overview_waves",
     )
@@ -870,6 +879,7 @@ st.markdown(
     """.format(" ".join(insight_sentences)),
     unsafe_allow_html=True,
 )
+st.caption("این متن صرفاً توصیفی است و نباید به‌عنوان تفسیر علّی خوانده شود.")
 
 # -----------------------------------------------------------------------------
 # Detailed table and download
