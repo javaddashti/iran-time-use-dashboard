@@ -33,37 +33,76 @@ def apply_fa_style() -> None:
             --accent: #315B7D;
         }
 
-        html, body, [class*="st-"],
+        /* Text elements only. Do NOT target every st- class: that would
+           override Streamlit's icon font and display icon names as text. */
+        html, body,
         [data-testid="stAppViewContainer"],
         [data-testid="stSidebar"],
+        [data-testid="stMarkdownContainer"],
+        [data-testid="stWidgetLabel"],
         input, textarea, button, select {
             direction: rtl;
             text-align: right;
             font-family: var(--fa-body-font) !important;
         }
 
+        /* Streamlit Material icon ligatures must use their OWN icon font.
+           E.g. keyboard_arrow_down, expand_more must render as icons. */
+        [data-testid="stIconMaterial"],
+        .material-symbols-rounded,
+        .material-icons {
+            font-family: "Material Symbols Rounded" !important;
+            font-weight: normal !important;
+            font-style: normal !important;
+            font-variant-ligatures: normal !important;
+            font-feature-settings: "liga" !important;
+            -webkit-font-feature-settings: "liga" !important;
+            direction: ltr !important;
+            text-align: center !important;
+            letter-spacing: normal !important;
+            text-transform: none !important;
+            white-space: nowrap;
+        }
+
         [data-testid="stAppViewContainer"] {
             background: #F7F8FB;
         }
 
+        /* Compact right-side filters: no 420px inner content overflow. */
         [data-testid="stSidebar"] {
             background: #F1F3F7;
             border-left: 1px solid #E2E6ED;
-
-            width: 380px !important;
-            min-width: 380px !important;
-            max-width: 380px !important;
+            width: 308px !important;
+            min-width: 308px !important;
+            max-width: 308px !important;
         }
-
-        /* محتوای داخلی سایدبار هم دقیقاً همان عرض را بگیرد */
-        [data-testid="stSidebar"] > div:first-child {
-            width: 420px !important;
-            min-width: 380px !important;
-        }
-
-        /* برای نسخه‌های جدیدتر Streamlit */
+        [data-testid="stSidebar"] > div:first-child,
         [data-testid="stSidebarContent"] {
-            width: 420px !important;
+            width: 100% !important;
+            min-width: 0 !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }
+        [data-testid="stSidebar"] [data-testid="stVerticalBlock"],
+        [data-testid="stSidebar"] [data-testid="stWidgetLabel"] {
+            min-width: 0 !important;
+        }
+
+        /* Quiet, neutral activity selector and its selection pills. */
+        div[data-testid="stMultiSelect"] [data-baseweb="tag"] {
+            background-color: #E5EFF5 !important;
+            color: #254E67 !important;
+            border-radius: .5rem !important;
+        }
+        div[data-testid="stPopover"] button {
+            border-radius: .7rem !important;
+            border-color: #D7E2EA !important;
+        }
+        .activity-selection-summary {
+            color: #64748B;
+            font-size: .91rem;
+            line-height: 1.9;
+            margin: -.2rem 0 1rem;
         }
 
         h1, h2, h3, h4, h5, h6,
@@ -233,6 +272,11 @@ def apply_fa_style() -> None:
         }
 
         @media (max-width: 900px) {
+            [data-testid="stSidebar"] {
+                width: min(84vw, 308px) !important;
+                min-width: 0 !important;
+                max-width: 84vw !important;
+            }
             .metric-card { min-height: 130px; }
             .hero-title { font-size: 2.2rem; }
             .block-container { padding-left: .8rem; padding-right: .8rem; }

@@ -18,3 +18,5 @@ data/raw/
 .vscode/
 .DS_Store
 Thumbs.db
+# Local project archives/backups (large and not for cloud deployment)
+*.rar

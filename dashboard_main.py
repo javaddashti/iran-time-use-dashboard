@@ -31,7 +31,7 @@ REQUIRED_COLUMNS = [
 ]
 
 GENDER_LABELS = {1: "مرد", 2: "زن"}
-WAVE_LABELS = {8788: "۱۳۸۷–۱۳۸۸", 9394: "۱۳۹۳–۱۳۹۴", 9899: "۱۳۹۸–۱۳۹۹"}
+WAVE_LABELS = {8788: "۱۳۸۷–۱۳۸۸", 9394: "۱۳۹۳–۱۳۹۴", 9899: "۱۳۹۸–۱۳۹۹", 304: "۱۴۰۳–۱۴۰۴"}
 QUARTER_LABELS = {1: "بهار", 2: "تابستان", 3: "پاییز", 4: "زمستان"}
 MARITAL_LABELS = {1: "دارای همسر", 2: "بی‌همسر بر اثر فوت", 3: "بی‌همسر بر اثر طلاق", 4: "هرگز ازدواج‌نکرده"}
 EDUCATION_LABELS = {
@@ -514,7 +514,6 @@ if st.sidebar.button("بازنشانی فیلترها", width="stretch"):
         "overview_weighting",
         "overview_top_metric",
         "overview_top_n",
-        "overview_trend_group",
     ]:
         st.session_state.pop(key, None)
     st.rerun()
@@ -603,12 +602,6 @@ with st.sidebar.form("overview_filters"):
             max_value=15,
             value=10,
             key="overview_top_n",
-        )
-        trend_key = st.selectbox(
-            "گروه فعالیت برای روند کوتاه",
-            options=[spec[0] for spec in CATEGORY_SPECS],
-            format_func=lambda value: CATEGORY_BY_KEY[value][0],
-            key="overview_trend_group",
         )
 
     submitted = st.form_submit_button("اعمال فیلترها", width="stretch")
@@ -877,61 +870,6 @@ st.markdown(
     """.format(" ".join(insight_sentences)),
     unsafe_allow_html=True,
 )
-st.caption("این متن صرفاً توصیفی است و نباید به‌عنوان تفسیر علّی خوانده شود.")
-
-# -----------------------------------------------------------------------------
-# Short trend
-# -----------------------------------------------------------------------------
-st.markdown('<div class="section-title">تغییرات میان دوره‌های آمارگیری</div>', unsafe_allow_html=True)
-trend_label, trend_codes, trend_color = CATEGORY_BY_KEY[trend_key]
-trend = calculate_trend(filtered, trend_codes, weighted)
-trend_fig = go.Figure(
-    go.Scatter(
-        x=trend["period_label"].map(plotly_rtl),
-        y=trend["mean_minutes"],
-        mode="lines+markers",
-        line=dict(color=trend_color, width=3),
-        marker=dict(size=9),
-        fill="tozeroy",
-        fillcolor=hex_to_rgba(trend_color, 0.14),
-        customdata=trend[["survey_year", "survey_quarter"]],
-        hovertemplate=(
-            "<b>%{x}</b><br>"
-            + escape(trend_label)
-            + ": %{y:.1f} دقیقه در روز<extra></extra>"
-        ),
-    )
-)
-trend_fig.update_layout(
-    height=390,
-    margin=dict(l=85, r=35, t=15, b=105),
-    xaxis=dict(
-        title=None,
-        tickangle=-40,
-        automargin=True,
-        tickfont=dict(size=11),
-        showgrid=False,
-    ),
-    yaxis=dict(
-        title=plotly_rtl("متوسط دقیقه در روز"),
-        title_standoff=16,
-        rangemode="tozero",
-        gridcolor="#E5E7EB",
-        automargin=True,
-    ),
-    font=dict(family="Vazirmatn, Tahoma, Arial", size=14),
-    plot_bgcolor="rgba(0,0,0,0)",
-    paper_bgcolor="rgba(0,0,0,0)",
-)
-st.plotly_chart(trend_fig, width="stretch", config={"displayModeBar": False})
-try:
-    st.page_link(
-        "pages/3_روند_زمانی_فعالیت‌ها.py",
-        label="مشاهده تحلیل کامل روند زمانی فعالیت‌ها",
-        icon="📈",
-    )
-except Exception:
-    st.caption("برای جزئیات بیشتر، صفحه «روند زمانی فعالیت‌ها» را از منوی کناری باز کنید.")
 
 # -----------------------------------------------------------------------------
 # Detailed table and download

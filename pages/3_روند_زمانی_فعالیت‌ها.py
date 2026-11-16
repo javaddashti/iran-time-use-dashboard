@@ -10,6 +10,7 @@ import streamlit as st
 from plotly.subplots import make_subplots
 
 from ui_style import apply_fa_style, plotly_rtl
+from activity_picker import activity_picker
 
 DATA_FILE = Path("data/processed/timeuse_person_activity.parquet")
 FALLBACK_FILE = Path("data/processed/timeuse_person_activity.pkl.gz")
@@ -626,30 +627,7 @@ if base.empty:
 
 activity_catalog = build_catalog(base, labels)
 
-st.subheader("انتخاب فعالیت")
-main_groups = sorted(activity_catalog["activity_main_label"].dropna().unique())
-selected_main_groups = st.multiselect(
-    "محدودکردن فهرست بر اساس گروه اصلی",
-    options=main_groups,
-    default=main_groups,
-)
-code_catalog = activity_catalog.loc[
-    activity_catalog["activity_main_label"].isin(selected_main_groups)
-]
-code_to_display = dict(
-    zip(code_catalog["activity_code"].astype(int), code_catalog["activity_display"])
-)
-code_options = sorted(code_to_display)
-religious_defaults = [code for code in [741, 742, 749] if code in code_options]
-default_codes = religious_defaults or code_options[:1]
-
-selected_codes = st.multiselect(
-    "کد یا کدهای فعالیت",
-    options=code_options,
-    default=default_codes,
-    format_func=lambda code: code_to_display.get(code, str(code)),
-    help="در حالت تجمیعی، زمان همه کدهای انتخاب‌شده برای هر فرد با هم جمع می‌شود.",
-)
+selected_codes, code_to_display = activity_picker(activity_catalog, id_prefix="time_series")
 if not selected_codes:
     st.info("حداقل یک کد فعالیت انتخاب کنید.")
     st.stop()
@@ -720,26 +698,11 @@ if selection_mode.startswith("تجمیع"):
             "period_label",
             "mean_all",
             "mean_participants",
+            "participation_rate",
+            "sample_size",
+            "participant_sample",
         ]
     ].copy()
-    st.subheader("جدول داده‌های نمودار")
-    st.dataframe(
-        table,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "period_label": "دوره آمارگیری",
-            "mean_all": st.column_config.NumberColumn(
-                f"متوسط زمان در کل جامعه ({time_unit})", format="%.3f"
-            ),
-            "mean_participants": st.column_config.NumberColumn(
-                f"متوسط زمان مشارکت‌کنندگان ({time_unit})", format="%.3f"
-            ),
-            "participation_rate": st.column_config.NumberColumn(
-                f"درصد مشارکت ({time_unit})", format="%.3f"
-            ),
-        },
-    )
     export_table = table.copy()
     export_table.insert(0, "selected_activity_codes", ",".join(map(str, selected_codes)))
     file_name = "timeuse_activity_time_series_combined.csv"
@@ -788,28 +751,6 @@ else:
             "participant_sample",
         ]
     ].copy()
-    st.subheader("جدول داده‌های نمودار")
-    st.dataframe(
-        table,
-        width="stretch",
-        hide_index=True,
-        column_config={
-            "activity_code": "کد فعالیت",
-            "activity_display": "کد و عنوان فعالیت",
-            "period_label": "دوره آمارگیری",
-            "mean_all": st.column_config.NumberColumn(
-                f"متوسط زمان در کل جامعه ({time_unit})", format="%.3f"
-            ),
-            "mean_participants": st.column_config.NumberColumn(
-                f"متوسط زمان مشارکت‌کنندگان ({time_unit})", format="%.3f"
-            ),
-            "participation_rate": st.column_config.NumberColumn(
-                "نرخ مشارکت (درصد)", format="%.3f"
-            ),
-            "sample_size": "تعداد افراد نمونه",
-            "participant_sample": "تعداد مشارکت‌کنندگان نمونه",
-        },
-    )
     export_table = table.copy()
     file_name = "timeuse_activity_time_series_separate.csv"
 

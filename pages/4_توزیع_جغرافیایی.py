@@ -9,6 +9,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from ui_style import apply_fa_style, plotly_rtl
+from activity_picker import activity_picker
 
 DATA_FILE = Path("data/processed/timeuse_person_activity.parquet")
 FALLBACK_FILE = Path("data/processed/timeuse_person_activity.pkl.gz")
@@ -418,7 +419,7 @@ def make_map(
 st.title("توزیع جغرافیایی فعالیت‌ها")
 st.caption(
     "توزیع استانی فعالیت‌ها بر پایه موج ۱۳۸۷–۱۳۸۸ طرح گذران وقت. "
-    "اطلاعات استان در موج‌های بعدی در فایل یکپارچه موجود نیست."
+    "اطلاعات استان در موج‌های بعدی در داده موجود نیست."
 )
 
 try:
@@ -432,10 +433,7 @@ except (FileNotFoundError, KeyError, ValueError) as exc:
 all_years = [1387, 1388]
 all_quarters = sorted(int(value) for value in df["survey_quarter"].dropna().unique())
 
-st.info(
-    "این صفحه عمداً فقط از موج ۱۳۸۷–۱۳۸۸ استفاده می‌کند؛ "
-    "برای موج‌های ۱۳۹۳–۱۳۹۴ و ۱۳۹۸–۱۳۹۹ متغیر استان در داده یکپارچه موجود نیست."
-)
+
 age_values = df["age"].dropna()
 min_age = int(age_values.min())
 max_age = int(age_values.max())
@@ -495,34 +493,7 @@ if base.empty:
 
 activity_catalog = build_catalog(base, labels)
 
-st.subheader("انتخاب فعالیت")
-main_groups = sorted(activity_catalog["activity_main_label"].dropna().unique())
-selected_main_groups = st.multiselect(
-    "محدودکردن فهرست بر اساس گروه اصلی",
-    options=main_groups,
-    default=main_groups,
-)
-
-code_catalog = activity_catalog.loc[
-    activity_catalog["activity_main_label"].isin(selected_main_groups)
-]
-code_to_display = dict(
-    zip(
-        code_catalog["activity_code"].astype(int),
-        code_catalog["activity_display"],
-    )
-)
-code_options = sorted(code_to_display)
-religious_defaults = [code for code in [741, 742, 749] if code in code_options]
-default_codes = religious_defaults or code_options[:1]
-
-selected_codes = st.multiselect(
-    "کد یا کدهای فعالیت",
-    options=code_options,
-    default=default_codes,
-    format_func=lambda code: code_to_display.get(code, str(code)),
-    help="اگر چند کد انتخاب شود، زمان آن‌ها برای هر فرد با هم جمع می‌شود.",
-)
+selected_codes, code_to_display = activity_picker(activity_catalog, id_prefix="geo")
 if not selected_codes:
     st.info("حداقل یک کد فعالیت انتخاب کنید.")
     st.stop()
@@ -563,7 +534,7 @@ st.markdown(
 
 st.info(
     "در موج ۱۳۸۷–۱۳۸۸، البرز هنوز استان مستقلی نبود. "
-    "برای نمایش نقشه ۳۱استانی سال ۱۴۰۲، مطابق کد Stata قبلی، "
+    "برای نمایش نقشه ۳۱استانی، "
     "مقدار تهران برای محدوده البرز نیز نمایش داده می‌شود."
 )
 
@@ -589,29 +560,10 @@ time_map = make_map(
 )
 st.plotly_chart(time_map, width="stretch")
 
-st.subheader("جدول استانی")
+# Retain the export without placing a large table beneath the maps.
 table = map_data[
-    [
-        "province_name",
-        "participation_rate",
-        "mean_time",
-    ]
-].copy()
-table = table.sort_values("province_name")
-st.dataframe(
-    table,
-    width="stretch",
-    hide_index=True,
-    column_config={
-        "province_name": "استان",
-        "participation_rate": st.column_config.NumberColumn(
-            "نرخ مشارکت (درصد)", format="%.2f"
-        ),
-        "mean_time": st.column_config.NumberColumn(
-            f"متوسط زمان ({time_unit})", format="%.2f"
-        ),
-    },
-)
+    ["province_name", "participation_rate", "mean_time"]
+].copy().sort_values("province_name")
 
 export_table = table.rename(
     columns={
