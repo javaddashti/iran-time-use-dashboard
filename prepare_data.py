@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
 import pandas as pd
 
-RAW_FILE = Path("data/raw/TimeUse_Cleaned_AllWaves(2).dta")
+RAW_FILE = Path(os.environ.get("TIMEUSE_DTA", "data/raw/TimeUse_Diary_v2_2.dta"))
 OUTPUT_FILE = Path("data/processed/timeuse_person_activity.parquet")
 FALLBACK_FILE = Path("data/processed/timeuse_person_activity.pkl.gz")
 CHUNK_SIZE = 5_000
@@ -82,7 +83,7 @@ def main() -> None:
     if not RAW_FILE.exists():
         raise FileNotFoundError(
             f"Raw data file not found: {RAW_FILE.resolve()}\n"
-            "Copy the .dta file into data/raw and keep the expected filename."
+            "Provide TIMEUSE_DTA or copy TimeUse_Diary_v2_2.dta into data/raw."
         )
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
